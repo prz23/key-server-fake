@@ -24,9 +24,9 @@ use serde::*;
 #[cfg(all(feature = "mesalock_sgx", not(target_env = "sgx")))]
 use uera;
 
-use crate::key_mount::{handle_msgs, handle_sync_mission};
-use primitives::key_types::KeyServerParams;
-use round_based::Msg;
+// use crate::key_mount::{handle_msgs, handle_sync_mission};
+// use primitives::key_types::KeyServerParams;
+// use round_based::Msg;
 
 // use webpki;
 // Token for our listening socket.
@@ -495,53 +495,7 @@ impl Connection {
         debug!("Request Method {}, uri {}", req.method(), req.uri());
         match *req.method() {
             Method::POST => {
-                let output = match req.uri().path() {
-                    "/command" => {
-                        // response
-                        let data: KeyServerParams = match serde_json::from_slice(req.body()) {
-                            Ok(p) => p,
-                            Err(e) => {
-                                return Response::builder()
-                                    .cors()
-                                    .status(500)
-                                    .body(e.to_string().into_bytes())
-                                    .unwrap();
-                            }
-                        };
-                        let process_res = handle_sync_mission(data);
-                        // Allows error messages to be returned if 404 is not caught by the front end
-                        match serde_json::to_string(&process_res) {
-                            Ok(o) => o,
-                            Err(e) => {
-                                error!("serde output error: {}", e.to_string());
-                                return Response::builder().cors().status(500).body(NOT_FOUND.to_vec()).unwrap();
-                            }
-                        }
-                    }
-                    "/round_msg" => {
-                        let (key, msgs): (String, Vec<Msg<String>>) = match serde_json::from_slice(req.body()) {
-                            Ok(p) => p,
-                            Err(e) => {
-                                return Response::builder()
-                                    .cors()
-                                    .status(500)
-                                    .body(e.to_string().into_bytes())
-                                    .unwrap();
-                            }
-                        };
-                        let res = handle_msgs(key, msgs);
-                        match serde_json::to_string(&res) {
-                            Ok(o) => o,
-                            Err(e) => {
-                                error!("serde output error: {}", e.to_string());
-                                return Response::builder().cors().status(500).body(NOT_FOUND.to_vec()).unwrap();
-                            }
-                        }
-                    }
-                    _ => {
-                        return Response::builder().cors().status(400).body(NOT_FOUND.to_vec()).unwrap();
-                    }
-                };
+                let output = "test-fake-key-server".to_string();
                 debug!("output = {:?}", output);
                 let res_bytes = output.into_bytes();
                 let response = Response::builder()
@@ -623,20 +577,20 @@ impl Default for Args {
 }
 
 fn load_certs(_filename: &str) -> Vec<rustls::Certificate> {
-    let root_ca_bin = include_bytes!("../../test-ca/end.fullchain");
+    let root_ca_bin = include_bytes!("../test-ca/end.fullchain");
     let mut reader = BufReader::new(&root_ca_bin[..]);
     rustls::internal::pemfile::certs(&mut reader).unwrap()
 }
 
 fn load_private_key(_filename: &str) -> rustls::PrivateKey {
     let rsa_keys = {
-        let root_ca_bin = include_bytes!("../../test-ca/end.key");
+        let root_ca_bin = include_bytes!("../test-ca/end.key");
         let mut reader = BufReader::new(&root_ca_bin[..]);
         rustls::internal::pemfile::rsa_private_keys(&mut reader).expect("file contains invalid rsa private key")
     };
 
     let pkcs8_keys = {
-        let root_ca_bin = include_bytes!("../../test-ca/end.key");
+        let root_ca_bin = include_bytes!("../test-ca/end.key");
         let mut reader = BufReader::new(&root_ca_bin[..]);
         rustls::internal::pemfile::pkcs8_private_keys(&mut reader)
             .expect("file contains invalid pkcs8 private key (encrypted keys not supported)")
@@ -654,9 +608,9 @@ fn load_private_key(_filename: &str) -> rustls::PrivateKey {
 fn make_config(_enable_ra: bool, cert: &str, key: &str) -> Arc<rustls::ServerConfig> {
     let mut config = rustls::ServerConfig::new(NoClientAuth::new());
 
-    #[cfg(all(feature = "normal"))]
+    // #[cfg(all(feature = "normal"))]
         let certs = load_certs(cert);
-    #[cfg(all(feature = "normal"))]
+    // #[cfg(all(feature = "normal"))]
         let privkey = load_private_key(key);
 
     #[cfg(all(feature = "mesalock_sgx", not(target_env = "sgx")))]
