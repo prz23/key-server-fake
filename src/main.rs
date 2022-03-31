@@ -766,6 +766,15 @@ fn error_response(body: String) -> Vec<u8> {
     Response::builder().cors().status(404).body(body).unwrap().flat()
 }
 
+pub fn start_fake_key_server(port:u16) {
+    env_logger::init();
+    let mut config_server = Args::default();
+    config_server.set_port(port);
+    config_server.set_cert_keys("../test-ca/end.fullchain".to_string(), "../test-ca/end.key".to_string());
+    start_server(config_server, 200);
+}
+
+
 fn main() {
     env_logger::init();
     println!("start key server fake");
