@@ -496,7 +496,7 @@ impl Connection {
         match *req.method() {
             Method::POST => {
                 let output =
-                    "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\nHello world from rustls fake key server\r\n".to_string();
+                    "Hello world from rustls fake key server".to_string();
                 debug!("output = {:?}", output);
                 let res_bytes = output.into_bytes();
                 let response = Response::builder()
