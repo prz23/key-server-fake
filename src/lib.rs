@@ -23,6 +23,7 @@ use serde::*;
 
 #[cfg(all(feature = "mesalock_sgx", not(target_env = "sgx")))]
 use uera;
+use std::option::Option::{None, Some};
 
 // use crate::key_mount::{handle_msgs, handle_sync_mission};
 // use primitives::key_types::KeyServerParams;
@@ -519,6 +520,12 @@ impl Connection {
     }
 }
 
+#[derive(Clone)]
+pub struct SelfDefinedCertsKeys{
+    pub certs: Vec<rustls::Certificate>,
+    pub pri_keys: rustls::PrivateKey,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Args {
     cmd_echo: bool,
@@ -606,13 +613,20 @@ fn load_private_key(_filename: &str) -> rustls::PrivateKey {
     }
 }
 
-fn make_config(_enable_ra: bool, cert: &str, key: &str) -> Arc<rustls::ServerConfig> {
+fn make_config(_enable_ra: bool, cert: &str, key: &str, data: Option<SelfDefinedCertsKeys>) -> Arc<rustls::ServerConfig> {
     let mut config = rustls::ServerConfig::new(NoClientAuth::new());
 
-    // #[cfg(all(feature = "normal"))]
-    let certs = load_certs(cert);
-    // #[cfg(all(feature = "normal"))]
-    let privkey = load_private_key(key);
+    //#[cfg(all(feature = "normal"))]
+    let mut certs = load_certs(cert);
+    //#[cfg(all(feature = "normal"))]
+    let mut privkey = load_private_key(key);
+    match data {
+        Some(data) => {
+            certs = data.certs;
+            privkey = data.pri_keys;
+        },
+        _ => () ,
+    }
 
     #[cfg(all(feature = "mesalock_sgx", not(target_env = "sgx")))]
         let linkable = true;
@@ -686,7 +700,7 @@ pub fn parse(plaintext: &Vec<u8>) -> Result<(Request<Vec<u8>>, bool, usize), ()>
     };
 }
 
-pub fn start_server(args: Args, max_conn: u16) {
+pub fn start_server(args: Args, max_conn: u16, data: Option<SelfDefinedCertsKeys>) {
     debug!("====start tls key server====");
     debug!(target: "tlsserver", "====start tls key server====");
     let mut addr: net::SocketAddr = "0.0.0.0:443".parse().unwrap();
@@ -698,6 +712,7 @@ pub fn start_server(args: Args, max_conn: u16) {
         args.flag_remote_attestation,
         &args.flag_certs.unwrap(),
         &args.flag_key.unwrap(),
+        data
     );
 
     let listener = TcpListener::bind(&addr).expect("cannot listen on port");
@@ -767,10 +782,10 @@ fn error_response(body: String) -> Vec<u8> {
     Response::builder().cors().status(404).body(body).unwrap().flat()
 }
 
-pub fn start_fake_key_server(port:u16) {
+pub fn start_fake_key_server(port:u16, data:Option<SelfDefinedCertsKeys>) {
     env_logger::init();
     let mut config_server = Args::default();
     config_server.set_port(port);
     config_server.set_cert_keys("../test-ca/end.fullchain".to_string(), "../test-ca/end.key".to_string());
-    start_server(config_server, 200);
+    start_server(config_server, 200, data);
 }
